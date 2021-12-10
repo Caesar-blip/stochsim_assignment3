@@ -4,9 +4,10 @@ import scipy.stats as st
 import pandas as pd
 import random
 import math
+from joblib import Parallel, delayed
 
 class AnnealTVS():
-    def __init__(self, dataframe, K = 2, stopK = 0.1, alpha = 0.99, ittol = 10000, elementary = "triangle"):
+    def __init__(self, dataframe, num_sim=10, K = 2, stopK = 0.1, alpha = 0.99, ittol = 10000, elementary = "triangle", verbose=False):
         self.df = dataframe
         self.K = K
         self.startK = K
@@ -14,9 +15,18 @@ class AnnealTVS():
         self.alpha = alpha
         self.ittol = ittol
         self.elementary = elementary
+        self.verbose = verbose
+        self.num_sim = num_sim
 
         # start with a simple solution
         self.solution = self.nearest_neighbours()
+
+
+    def run_sim(self):
+        results = []
+        for i in range(self.num_sim):
+            results.append(self.sim_anneal())
+        return results
 
 
     def sim_anneal(self):
@@ -24,8 +34,9 @@ class AnnealTVS():
         all_dist = []
         old_dist = self.total_distance()
         i = 0
-        lowered = 0
-        raised = 0
+        if self.verbose:
+            lowered = 0
+            raised = 0
         while self.K > self.stopK and i < self.ittol:
             # elementary edit, triangle swap for now
             if self.elementary =="triangle":
@@ -40,7 +51,8 @@ class AnnealTVS():
             new_dist = self.total_distance(new_solution)
             # decide whether to accept the new solution
             if new_dist < old_dist:
-                lowered += 1
+                if self.verbose:
+                    lowered += 1
                 self.solution = new_solution
                 old_dist = self.total_distance()
                 all_dist.append(self.total_distance())
@@ -49,8 +61,9 @@ class AnnealTVS():
                 rand = np.random.random()
                 prob = math.exp(-abs(new_dist - old_dist) / self.K )
                 if rand < prob:
-                    raised += 1
-                    self.sol = new_solution
+                    if self.verbose:
+                        raised += 1
+                    self.solution = new_solution
                     old_dist = self.total_distance()
                     all_dist.append(self.total_distance())
             
@@ -59,7 +72,8 @@ class AnnealTVS():
             self.K *= self.alpha 
         
         self.K = self.startK
-        print(f"times lowered: {lowered}\ntimes raised:{raised}")
+        if self.verbose:
+            print(f"times lowered: {lowered}\ntimes raised:{raised}")
         return self.solution, all_dist
 
 
