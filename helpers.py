@@ -17,6 +17,7 @@ class AnnealTVS():
         self.elementary = elementary
         self.verbose = verbose
         self.num_sim = num_sim
+        self.curr_sim = 1
 
         # start with a simple solution
         self.solution = self.nearest_neighbours()
@@ -45,6 +46,8 @@ class AnnealTVS():
                 new_solution = self.swap()
             elif self.elementary == "shuffle":
                 new_solution = self.shuffle()
+            elif self.elementary == "insert":
+                new_solution = self.insert()
             else:
                 raise ValueError
                 
@@ -71,7 +74,9 @@ class AnnealTVS():
             i += 1
             self.K *= self.alpha 
         
-        self.K = self.startK
+        # scale the cooling scheme to start lower every next simulation
+        self.K = self.startK/self.curr_sim
+        self.curr_sim += 1
         if self.verbose:
             print(f"times lowered: {lowered}\ntimes raised:{raised}")
         return self.solution, all_dist
@@ -118,6 +123,15 @@ class AnnealTVS():
         i1, i2 = random.sample(range(0, len(self.solution)-1), 2)
         new_solution = self.solution[:]
         new_solution[i1], new_solution[i2] = new_solution[i2], new_solution[i1]
+        return new_solution
+
+
+    def insert(self):
+        new_solution = self.solution[:]
+        node = random.choice(new_solution)
+        new_solution.remove(node)
+        insert = random.randint(0, len(new_solution)-1)
+        new_solution.insert(insert,node)
         return new_solution
 
 
