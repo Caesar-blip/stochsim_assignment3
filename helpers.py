@@ -7,7 +7,7 @@ import math
 from joblib import Parallel, delayed
 
 class AnnealTVS():
-    def __init__(self, dataframe, num_sim=10, K = 2, stopK = 0.1, alpha = 0.99, ittol = 10000, elementary = "triangle", verbose=False):
+    def __init__(self, dataframe, num_sim=10, K = 2, num_searches = 100, stopK = 0.1, alpha = 0.99, ittol = 10000, elementary = "triangle", verbose=False):
         self.df = dataframe
         self.K = K
         self.startK = K
@@ -17,7 +17,7 @@ class AnnealTVS():
         self.elementary = elementary
         self.verbose = verbose
         self.num_sim = num_sim
-        self.curr_sim = 1
+        self.num_searches = num_searches
 
         # start with a simple solution
         self.solution = self.nearest_neighbours()
@@ -27,6 +27,7 @@ class AnnealTVS():
         results = []
         for i in range(self.num_sim):
             results.append(self.sim_anneal())
+            self.K=self.startK
         return results
 
 
@@ -34,52 +35,51 @@ class AnnealTVS():
         assert self.alpha < 1, "choose a smaller alpha"
         all_dist = []
         old_dist = self.total_distance()
-        i = 0
-        if self.verbose:
-            lowered = 0
-            raised = 0
-        while self.K > self.stopK and i < self.ittol:
-            # elementary edit, triangle swap for now
-            if self.elementary =="triangle":
-                new_solution = self.triangle_swap()
-            elif self.elementary == "swap":
-                new_solution = self.swap()
-            elif self.elementary == "shuffle":
-                new_solution = self.shuffle()
-            elif self.elementary == "insert":
-                new_solution = self.insert()
-            else:
-                raise ValueError
-                
-            new_dist = self.total_distance(new_solution)
-            # decide whether to accept the new solution
-            if new_dist < old_dist:
-                if self.verbose:
-                    lowered += 1
-                self.solution = new_solution
-                old_dist = self.total_distance()
-                all_dist.append(self.total_distance())
-            else:
-                # accept with probability depending on temperature
-                rand = np.random.random()
-                prob = math.exp(-abs(new_dist - old_dist) / self.K )
-                if rand < prob:
+        i=0
+        while(self.K>self.stopK and i<self.ittol):
+            if self.verbose:
+                lowered = 0
+                raised = 0
+            for i in range(self.num_searches):
+                # elementary edit, triangle swap for now
+                if self.elementary =="triangle":
+                    new_solution = self.triangle_swap()
+                elif self.elementary == "swap":
+                    new_solution = self.swap()
+                elif self.elementary == "shuffle":
+                    new_solution = self.shuffle()
+                elif self.elementary == "insert":
+                    new_solution = self.insert()
+                elif self.elementary == "2opt":
+                    new_solution = self.opt2()
+                else:
+                    raise ValueError
+
+                new_dist = self.total_distance(new_solution)
+                # decide whether to accept the new solution
+                if new_dist < old_dist:
                     if self.verbose:
-                        raised += 1
+                        lowered += 1
                     self.solution = new_solution
                     old_dist = self.total_distance()
                     all_dist.append(self.total_distance())
-            
-            # decrease temperature
-            i += 1
+                else:
+                    # accept with probability depending on temperature
+                    rand = np.random.random()
+                    prob = math.exp(-abs(new_dist - old_dist) / self.K )
+                    if rand < prob:
+                        if self.verbose:
+                            raised += 1
+                        self.solution = new_solution
+                        old_dist = self.total_distance()
+                        all_dist.append(self.total_distance())
+
+            if self.verbose:
+                print(f"temperature: {self.K}\ntimes lowered: {lowered}\ntimes raised:{raised}")
+            # scale the cooling scheme to start lower every next simulation
             self.K *= self.alpha 
-        
-        # scale the cooling scheme to start lower every next simulation
-        self.K = self.startK/self.curr_sim
-        self.curr_sim += 1
-        if self.verbose:
-            print(f"times lowered: {lowered}\ntimes raised:{raised}")
-        return self.solution, all_dist
+            
+        return self.solution
 
 
     def nearest_neighbours(self):
@@ -144,6 +144,20 @@ class AnnealTVS():
         return new_solution    
 
 
+    def opt2(self):
+        i = random.randint(0, len(self.solution) - 7)
+        k = i+random.randint(3,6)
+        new_solution = self.solution[0:i]
+
+        for j in range((k-i), -1, -1):
+            new_solution.append(self.solution[i+j])
+        new_solution = new_solution + self.solution[(k+1):len(self.solution)]
+
+
+        #assert len(new_solution) == len(self.solution)
+        return new_solution
+
+
     def get_distance(self,x1, y1, x2, y2) :
         return np.sqrt((x1-x2)**2 + abs(y1-y2)**2)
 
@@ -164,6 +178,7 @@ class AnnealTVS():
 
 
     def plot_solution(self):
+        self.df.plot.scatter("x", "y")
         for i in range(len(self.solution)-1):
             fro = self.df.loc[self.solution[i]]
             to = self.df.loc[self.solution[i+1]]
