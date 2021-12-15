@@ -7,18 +7,24 @@ import math
 from joblib import Parallel, delayed
 
 class AnnealTVS():
-    def __init__(self, dataframe, num_sim=10, K = 2, num_searches = 100, stopK = 0.1, alpha = 0.99, ittol = 10000, elementary = "triangle", verbose=False):
+    def __init__(self, dataframe, num_sim=10, K = 2, num_searches = 100, stopK = 0.1, alpha = 0.99,
+        elementary = "triangle", verbose=False, alternate=False, secondary=-1, beta=0.05, gamma=1):
+        
         self.df = dataframe
         self.K = K
         self.startK = K
         self.stopK = stopK
         self.alpha = alpha
-        self.ittol = ittol
+        self.beta = beta
+        self.gamma = gamma
         self.elementary = elementary
         self.verbose = verbose
         self.num_sim = num_sim
         self.num_searches = num_searches
 
+        if alternate:
+            self.secondary = secondary
+            self.alternate = alternate
         # start with a simple solution
         self.solution = self.nearest_neighbours()
 
@@ -27,7 +33,8 @@ class AnnealTVS():
         results = []
         for i in range(self.num_sim):
             results.append(self.sim_anneal())
-            self.K=self.startK
+            self.startK=self.startK * self.gamma
+            self.K = self.startK
         return results
 
 
@@ -36,7 +43,7 @@ class AnnealTVS():
         all_dist = []
         old_dist = self.total_distance()
         i=0
-        while(self.K>self.stopK and i<self.ittol):
+        while(self.K>self.stopK):
             if self.verbose:
                 lowered = 0
                 raised = 0
@@ -66,7 +73,7 @@ class AnnealTVS():
                 else:
                     # accept with probability depending on temperature
                     rand = np.random.random()
-                    prob = math.exp(-abs(new_dist - old_dist) / self.K )
+                    prob = math.exp((-1*abs(new_dist - old_dist)) / self.K )
                     if rand < prob:
                         if self.verbose:
                             raised += 1
@@ -78,6 +85,10 @@ class AnnealTVS():
                 print(f"temperature: {self.K}\ntimes lowered: {lowered}\ntimes raised:{raised}")
             # scale the cooling scheme to start lower every next simulation
             self.K *= self.alpha 
+            # swap to secondary strategy if temperature is low enough
+            if self.alternate:
+                if self.K < (self.beta*self.startK):
+                    self.elementary = self.secondary
             
         return self.solution
 
@@ -146,7 +157,7 @@ class AnnealTVS():
 
     def opt2(self):
         i = random.randint(0, len(self.solution) - 7)
-        k = i+random.randint(3,6)
+        k = i+random.randint(2,4)
         new_solution = self.solution[0:i]
 
         for j in range((k-i), -1, -1):
