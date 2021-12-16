@@ -22,11 +22,12 @@ class AnnealTVS():
         self.num_sim = num_sim
         self.num_searches = num_searches
         self.alternate = alternate
-        
+
         if alternate:
             self.secondary = secondary
             
         # start with a simple solution
+        self.dist_matrix = self.build_matrix()
         self.solution = self.nearest_neighbours()
 
 
@@ -179,13 +180,9 @@ class AnnealTVS():
             solution = self.solution
         distance = 0
         for i in range(len(solution)-1):
-            fro = self.df.loc[solution[i]]
-            to = self.df.loc[solution[i+1]]
-            distance += self.get_distance(fro["x"], fro["y"], to["x"], to["y"])
+            distance += self.dist_matrix[int(solution[i])-1][int(solution[i+1])-1]
         # make it a circle
-        fro = self.df.loc[solution[len(solution)-1]]
-        to = self.df.loc[solution[0]]
-        distance += self.get_distance(fro["x"], fro["y"], to["x"], to["y"])
+        distance += self.dist_matrix[int(solution[i+1])-1][int(solution[0])-1]
         return distance
 
 
@@ -198,3 +195,15 @@ class AnnealTVS():
         fro = self.df.loc[self.solution[len(self.solution)-1]]
         to = self.df.loc[self.solution[0]]
         plt.arrow(fro["x"], fro["y"], to["x"]-fro["x"], to["y"]-fro["y"])
+
+
+    def build_matrix(self):
+        matrix = np.zeros((len(self.df),len(self.df)))
+        for row in range(len(self.df)):
+            fro = self.df.loc[f"{row+1}"]
+            for column in range(len(self.df)):
+                if row != column:
+                    to = self.df.loc[f"{column+1}"]
+                    matrix[row][column] = self.get_distance(fro["x"], fro["y"], to["x"], to["y"])
+        
+        return matrix
