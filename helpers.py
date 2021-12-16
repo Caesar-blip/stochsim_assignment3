@@ -21,10 +21,11 @@ class AnnealTVS():
         self.verbose = verbose
         self.num_sim = num_sim
         self.num_searches = num_searches
-
+        self.alternate = alternate
+        
         if alternate:
             self.secondary = secondary
-            self.alternate = alternate
+            
         # start with a simple solution
         self.solution = self.nearest_neighbours()
 
