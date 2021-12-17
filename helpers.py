@@ -160,8 +160,8 @@ class AnnealTVS():
 
 
     def opt2(self):
-        i = random.randint(0, len(self.solution) - 7)
-        k = i+random.randint(2,4)
+        i = random.randint(0, len(self.solution)-2)
+        k = i+random.randint(1, len(self.solution) -1 -i)
         new_solution = self.solution[0:i]
 
         for j in range((k-i), -1, -1):
