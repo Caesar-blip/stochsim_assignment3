@@ -7,7 +7,7 @@ import math
 from joblib import Parallel, delayed
 
 class AnnealTVS():
-    def __init__(self, dataframe, num_sim=10, K = 2, num_searches = 100, stopK = 0.1, alpha = 0.99,
+    def __init__(self, dataframe, num_sim=1, K = 2, num_searches = 100, stopK = 0.1, alpha = 0.99,
         elementary = "triangle", verbose=False, alternate=False, secondary=-1, beta=0.05, gamma=1):
         
         self.df = dataframe
@@ -49,6 +49,8 @@ class AnnealTVS():
             if self.verbose:
                 lowered = 0
                 raised = 0
+
+            # run an epoch
             for i in range(self.num_searches):
                 # elementary edit, triangle swap for now
                 if self.elementary =="triangle":
