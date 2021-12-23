@@ -1,15 +1,30 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.stats as st
-import pandas as pd
 import random
 import math
-from joblib import Parallel, delayed
+
 
 class AnnealTVS():
-    def __init__(self, dataframe, num_sim=1, K = 2, num_searches = 100, stopK = 0.1, alpha = 0.99,
-        elementary = "triangle", verbose=False, alternate=False, secondary=-1, beta=0.05, gamma=1):
-        
+    def __init__(self, dataframe, repeats=1, K = 2, markov_length = 100, stopK = 0.1, alpha = 0.99,
+        elementary = "2opt", verbose=False, alternate=False, secondary=-1, beta=0.05, gamma=1):
+        """A class that tries to solve a given TVS problem using Simulated Annealing.
+
+        Args:
+            dataframe (Pandas Dataframe): A dataframe that contains the coordinates of the TVS problem.
+            repeats (int, optional): The amount of times the temperature is set to a high value. Defaults to 1.
+            K (int, optional): Starting temperature. Defaults to 2.
+            markov_length (int, optional): The length of the markov chain at every temperature. Defaults to 100.
+            stopK (float, optional): The final temperature. Defaults to 0.1.
+            alpha (float, optional): The amount by which the temperature is multiplied at every step. Should be lower than 1. Defaults to 0.99.
+            elementary (str, optional): The elementary edit tried at every step. Defaults to "2opt".
+            verbose (bool, optional): Whether or not to print a summary of every markov chain. Defaults to False.
+            alternate (bool, optional): If true, the algorithm changes to a secondary elementary edit at the end of the run. Defaults to False.
+            secondary (string, optional): The secondary the to change to. Defaults to -1.
+            beta (float, optional): The amount at which to switch to the secondary strategy. Defaults to 0.05.
+            gamma (int, optional): The amount the starting temperature gets multiplied with at every step. Defaults to 1.
+        """
+        assert alpha < 1, "Alpha should be <1"
+
         self.df = dataframe
         self.K = K
         self.startK = K
@@ -18,12 +33,14 @@ class AnnealTVS():
         self.beta = beta
         self.gamma = gamma
         self.elementary = elementary
+        self.start_strat = elementary
         self.verbose = verbose
-        self.num_sim = num_sim
-        self.num_searches = num_searches
+        self.repeats = repeats
+        self.markov_length = markov_length
         self.alternate = alternate
 
         if alternate:
+            assert secondary != -1, "If you want to alternate, enter a secondary strategy"
             self.secondary = secondary
             
         # start with a simple solution
@@ -32,15 +49,29 @@ class AnnealTVS():
 
 
     def run_sim(self):
+        """Calls the simulated annealing algorithm.
+
+        Returns:
+            list: A list with the results of every run
+        """
         results = []
-        for i in range(self.num_sim):
+        for i in range(self.repeats):
             results.append(self.sim_anneal())
             self.startK=self.startK * self.gamma
             self.K = self.startK
+            self.elementary = self.start_strat
         return results
 
 
     def sim_anneal(self):
+        """The Simulated annealing algorithm
+
+        Raises:
+            ValueError: The elementary edit should be one of the implemented strategies.
+
+        Returns:
+            Float: The final total distance of the path.
+        """
         assert self.alpha < 1, "choose a smaller alpha"
         all_dist = []
         old_dist = self.total_distance()
@@ -51,7 +82,7 @@ class AnnealTVS():
                 raised = 0
 
             # run an epoch
-            for i in range(self.num_searches):
+            for i in range(self.markov_length):
                 # elementary edit, triangle swap for now
                 if self.elementary =="triangle":
                     new_solution = self.triangle_swap()
@@ -94,10 +125,15 @@ class AnnealTVS():
                 if self.K < (self.beta*self.startK):
                     self.elementary = self.secondary
             
-        return self.solution
+        return self.total_distance()
 
 
     def nearest_neighbours(self):
+        """Creates a starting point using a greedy nearest neighbour algorithm.
+
+        Returns:
+            List: A list with the order of the cities that are travelled.
+        """
         free_nodes = []
         for row in range(self.df.shape[0]):
             free_nodes.append(self.df.iloc[row].name)
@@ -128,6 +164,11 @@ class AnnealTVS():
 
 
     def triangle_swap(self):
+        """An triangle swap elementary edit.
+
+        Returns:
+            list: New solution.
+        """
         i1, i2, i3 = random.sample(range(0, len(self.solution)-1), 3)
         new_solution = self.solution[:]
         new_solution[i1], new_solution[i2], new_solution[i3] = new_solution[i2], new_solution[i3], new_solution[i1]
@@ -135,6 +176,11 @@ class AnnealTVS():
 
 
     def swap(self):
+        """A simple swap elementary edit.
+
+        Returns:
+            list: New solution.
+        """
         i1, i2 = random.sample(range(0, len(self.solution)-1), 2)
         new_solution = self.solution[:]
         new_solution[i1], new_solution[i2] = new_solution[i2], new_solution[i1]
@@ -142,6 +188,11 @@ class AnnealTVS():
 
 
     def insert(self):
+        """The insert of a element at a random location.
+
+        Returns:
+            list: New solution.
+        """
         new_solution = self.solution[:]
         node = random.choice(new_solution)
         new_solution.remove(node)
@@ -151,6 +202,11 @@ class AnnealTVS():
 
 
     def shuffle(self):
+        """Shuffles a part of the solution.
+
+        Returns:
+            list: New solution.
+        """
         new_solution = self.solution[:]
         i1, i2 = random.sample(range(0, len(new_solution)-1), 2)
         sub = new_solution[i1:i2]
@@ -160,6 +216,11 @@ class AnnealTVS():
 
 
     def opt2(self):
+        """Changes the order between two cities, effectively untangling any knots in between.
+
+        Returns:
+            list: New solution.
+        """
         i = random.randint(0, len(self.solution)-2)
         k = i+random.randint(1, len(self.solution) -1 -i)
         new_solution = self.solution[0:i]
@@ -174,10 +235,29 @@ class AnnealTVS():
 
 
     def get_distance(self,x1, y1, x2, y2) :
+        """Computes the Euclidean distance between two points.
+
+        Args:
+            x1 (int): X coordinate of the first city.
+            y1 (int): Y coordinate of the first city.
+            x2 (int): X coordinate of the second city.
+            y2 (int): X coordinate of the second city.
+
+        Returns:
+            [float]: Distance.
+        """
         return np.sqrt((x1-x2)**2 + abs(y1-y2)**2)
 
 
     def total_distance(self, solution = -1):
+        """The total distance of a given solution
+
+        Args:
+            solution (int, optional): A solution. Not necessary as it will take the solution in the class. Defaults to -1.
+
+        Returns:
+            float: Total distance.
+        """
         if solution == -1:
             solution = self.solution
         distance = 0
@@ -189,6 +269,8 @@ class AnnealTVS():
 
 
     def plot_solution(self):
+        """Plots the path of the salesmen
+        """
         self.df.plot.scatter("x", "y")
         for i in range(len(self.solution)-1):
             fro = self.df.loc[self.solution[i]]
@@ -200,6 +282,11 @@ class AnnealTVS():
 
 
     def build_matrix(self):
+        """Builds a distance matrix of all the cities in the dataframe.
+
+        Returns:
+            [numpy matrix]: A matrix that contains the distance between two cities
+        """
         matrix = np.zeros((len(self.df),len(self.df)))
         for row in range(len(self.df)):
             fro = self.df.loc[f"{row+1}"]
