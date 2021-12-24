@@ -6,7 +6,8 @@ import math
 
 class AnnealTVS():
     def __init__(self, dataframe, repeats=1, K = 2, markov_length = 100, stopK = 0.1, alpha = 0.99,
-        elementary = "2opt", verbose=False, alternate=False, secondary=-1, beta=0.05, gamma=1):
+        elementary = "2opt", verbose=False, alternate=False, secondary=-1, beta=0.05, gamma=1, 
+        all_distances=False, return_solution=False):
         """A class that tries to solve a given TVS problem using Simulated Annealing.
 
         Args:
@@ -22,6 +23,8 @@ class AnnealTVS():
             secondary (string, optional): The secondary the to change to. Defaults to -1.
             beta (float, optional): The amount at which to switch to the secondary strategy. Defaults to 0.05.
             gamma (int, optional): The amount the starting temperature gets multiplied with at every step. Defaults to 1.
+            all_distances (Bool, optional): Choose whether you want to return all distances and temperatures.
+            return_solution (Bool, optional): Choose whether to return the solution.
         """
         assert alpha < 1, "Alpha should be <1"
 
@@ -38,6 +41,8 @@ class AnnealTVS():
         self.repeats = repeats
         self.markov_length = markov_length
         self.alternate = alternate
+        self.all_distances = all_distances
+        self.return_solution = return_solution
 
         if alternate:
             assert secondary != -1, "If you want to alternate, enter a secondary strategy"
@@ -74,6 +79,7 @@ class AnnealTVS():
         """
         assert self.alpha < 1, "choose a smaller alpha"
         all_dist = []
+        temperature = []
         old_dist = self.total_distance()
         i=0
         while(self.K>self.stopK):
@@ -83,6 +89,8 @@ class AnnealTVS():
 
             # run an epoch
             for i in range(self.markov_length):
+                temperature.append(self.K)
+                all_dist.append(self.total_distance())
                 # elementary edit, triangle swap for now
                 if self.elementary =="triangle":
                     new_solution = self.triangle_swap()
@@ -104,18 +112,16 @@ class AnnealTVS():
                         lowered += 1
                     self.solution = new_solution
                     old_dist = self.total_distance()
-                    all_dist.append(self.total_distance())
                 else:
                     # accept with probability depending on temperature
                     rand = np.random.random()
-                    prob = math.exp((-1*abs(new_dist - old_dist)) / self.K )
+                    prob = math.exp((-1*(new_dist - old_dist)) / self.K )
                     if rand < prob:
                         if self.verbose:
                             raised += 1
                         self.solution = new_solution
                         old_dist = self.total_distance()
-                        all_dist.append(self.total_distance())
-
+                    
             if self.verbose:
                 print(f"temperature: {self.K}\ntimes lowered: {lowered}\ntimes raised:{raised}")
             # scale the cooling scheme to start lower every next simulation
@@ -124,8 +130,14 @@ class AnnealTVS():
             if self.alternate:
                 if self.K < (self.beta*self.startK):
                     self.elementary = self.secondary
-            
-        return self.total_distance()
+
+        if self.all_distances:
+            returns = [all_dist, temperature]
+        else:
+            returns = self.total_distance()
+        if self.return_solution:
+            returns = [returns, self.solution]
+        return returns
 
 
     def nearest_neighbours(self):
