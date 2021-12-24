@@ -9,7 +9,6 @@ class AnnealTVS():
         elementary = "2opt", verbose=False, alternate=False, secondary=-1, beta=0.05, gamma=1, 
         all_distances=False, return_solution=False):
         """A class that tries to solve a given TVS problem using Simulated Annealing.
-
         Args:
             dataframe (Pandas Dataframe): A dataframe that contains the coordinates of the TVS problem.
             repeats (int, optional): The amount of times the temperature is set to a high value. Defaults to 1.
@@ -55,7 +54,6 @@ class AnnealTVS():
 
     def run_sim(self):
         """Calls the simulated annealing algorithm.
-
         Returns:
             list: A list with the results of every run
         """
@@ -70,10 +68,8 @@ class AnnealTVS():
 
     def sim_anneal(self):
         """The Simulated annealing algorithm
-
         Raises:
             ValueError: The elementary edit should be one of the implemented strategies.
-
         Returns:
             Float: The final total distance of the path.
         """
@@ -142,7 +138,6 @@ class AnnealTVS():
 
     def nearest_neighbours(self):
         """Creates a starting point using a greedy nearest neighbour algorithm.
-
         Returns:
             List: A list with the order of the cities that are travelled.
         """
@@ -177,7 +172,6 @@ class AnnealTVS():
 
     def triangle_swap(self):
         """An triangle swap elementary edit.
-
         Returns:
             list: New solution.
         """
@@ -189,7 +183,6 @@ class AnnealTVS():
 
     def swap(self):
         """A simple swap elementary edit.
-
         Returns:
             list: New solution.
         """
@@ -201,7 +194,6 @@ class AnnealTVS():
 
     def insert(self):
         """The insert of a element at a random location.
-
         Returns:
             list: New solution.
         """
@@ -215,7 +207,6 @@ class AnnealTVS():
 
     def shuffle(self):
         """Shuffles a part of the solution.
-
         Returns:
             list: New solution.
         """
@@ -229,7 +220,6 @@ class AnnealTVS():
 
     def opt2(self):
         """Changes the order between two cities, effectively untangling any knots in between.
-
         Returns:
             list: New solution.
         """
@@ -248,13 +238,11 @@ class AnnealTVS():
 
     def get_distance(self,x1, y1, x2, y2) :
         """Computes the Euclidean distance between two points.
-
         Args:
             x1 (int): X coordinate of the first city.
             y1 (int): Y coordinate of the first city.
             x2 (int): X coordinate of the second city.
             y2 (int): X coordinate of the second city.
-
         Returns:
             [float]: Distance.
         """
@@ -263,10 +251,8 @@ class AnnealTVS():
 
     def total_distance(self, solution = -1):
         """The total distance of a given solution
-
         Args:
             solution (int, optional): A solution. Not necessary as it will take the solution in the class. Defaults to -1.
-
         Returns:
             float: Total distance.
         """
@@ -295,7 +281,6 @@ class AnnealTVS():
 
     def build_matrix(self):
         """Builds a distance matrix of all the cities in the dataframe.
-
         Returns:
             [numpy matrix]: A matrix that contains the distance between two cities
         """
